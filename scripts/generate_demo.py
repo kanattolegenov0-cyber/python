@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 def generate():
-    regions = json.loads((ROOT/'data/regions.json').read_text())
+    regions = json.loads((ROOT/'data/regions.json').read_text(encoding='utf-8'))
     rng = np.random.default_rng(731)
     population = rng.integers(400_000, 1_500_000, len(regions)).astype(float)
     population[-3:] = [1_050_000, 1_700_000, 950_000]

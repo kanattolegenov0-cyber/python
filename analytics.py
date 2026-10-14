@@ -7,7 +7,7 @@ import pandas as pd
 import statsmodels.api as sm
 
 ROOT = Path(__file__).resolve().parent
-REGIONS = json.loads((ROOT/'data/regions.json').read_text())
+REGIONS = json.loads((ROOT/'data/regions.json').read_text(encoding='utf-8'))
 IDS = [r['id'] for r in REGIONS]
 REQUIRED = ['year', 'region_id', 'population', 'arrivals', 'departures']
 MODEL_NAMES = {'poisson':'Пуассон', 'nb':'Теріс биномдық (NB2)', 'spatial':'Кеңістіктік NB2'}

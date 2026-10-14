@@ -109,7 +109,7 @@ def test_official_source_integrity_and_fractional_population():
     import hashlib
     import json
     from scripts.import_official import SOURCES,parse_workbook
-    meta=json.loads((ROOT/'data/official-metadata.json').read_text())
+    meta=json.loads((ROOT/'data/official-metadata.json').read_text(encoding='utf-8'))
     frame=validate_panel(pd.read_csv(ROOT/'data/official.csv'))
     assert len(frame)==200 and frame.year.min()==2016 and frame.year.max()==2025
     assert (frame.population % 1 != 0).any() # annual averages must not be rounded away

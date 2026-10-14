@@ -30,11 +30,11 @@ def dataset_path(dataset):
 
 def metadata(dataset):
     if dataset=='official':
-        return json.loads((ROOT/'data/official-metadata.json').read_text())
+        return json.loads((ROOT/'data/official-metadata.json').read_text(encoding='utf-8'))
     if dataset=='demo':
         return {'kind':'demo','title':'Көрсетілім деректері','source':'Жасанды деректер · ресми статистика емес',
                 'note':'2016–2025 жылдардағы сандар интерфейс пен есептеуді сынау үшін генерацияланған. Диплом қорытындыларына қолдануға болмайды. 20 өңірдің тарихи шекаралары бұл мысалда ескерілмеген.'}
-    return json.loads((INSTANCE/(dataset+'.json')).read_text())
+    return json.loads((INSTANCE/(dataset+'.json')).read_text(encoding='utf-8'))
 
 
 @lru_cache(maxsize=12)
