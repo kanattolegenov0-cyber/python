@@ -1,0 +1,77 @@
+"""End-to-end validation against a running local server (PORT 8000 by default)."""
+from pathlib import Path
+import os
+from playwright.sync_api import sync_playwright, expect
+ROOT=Path(__file__).resolve().parents[1]
+url=os.environ.get('BASE_URL','http://127.0.0.1:8000')
+with sync_playwright() as p:
+    browser=p.chromium.launch(executable_path='/usr/bin/chromium',headless=True,args=['--no-sandbox'])
+    page=browser.new_page(viewport={'width':1440,'height':1100},device_scale_factor=1)
+    errors=[]
+    page.on('pageerror',lambda e:errors.append(str(e)))
+    page.goto(url)
+    expect(page.locator('#dashboard')).to_be_visible(timeout=30000)
+    expect(page.locator('#error-banner')).to_be_hidden()
+    expect(page.locator('.notice-icon')).to_have_text('i')
+    expect(page.locator('#insight-concentration')).to_contain_text('%')
+    expect(page.locator('#map .region-point')).to_have_count(20)
+    expect(page.locator('#data-notice')).to_contain_text('Ресми деректер · stat.gov.kz')
+    page.screenshot(path=str(ROOT/'artifacts/desktop.png'),full_page=True)
+    original=page.locator('#kpi-arrivals').inner_text()
+    page.select_option('#year-select','2024')
+    assert page.locator('#kpi-arrivals').inner_text()!=original
+    page.locator('#map [data-region="astana"]').click()
+    expect(page.locator('#region-select')).to_have_value('astana')
+    expect(page.locator('#trend-subtitle')).to_contain_text('Астана')
+    page.locator('#region-search').fill('Ақтөбе')
+    expect(page.locator('#region-rows tr')).to_have_count(1)
+    page.locator('#region-search').fill('')
+    page.select_option('#horizon-select','5')
+    expect(page.locator('#forecast-last-year')).to_have_text('2030 ЖЫЛҒА БОЛЖАМ',timeout=30000)
+    page.select_option('#model-select','poisson')
+    expect(page.locator('#selected-model')).to_have_text('Пуассон',timeout=30000)
+    page.select_option('#neighbors-select','3')
+    expect(page.locator('#loading')).to_be_hidden(timeout=30000)
+    with page.expect_download() as download:
+        page.locator('#download-report').click()
+    assert 'official' in download.value.suggested_filename
+    with page.expect_download() as download:
+        page.locator('#download-weights').click()
+    assert 'k3' in download.value.suggested_filename
+    page.locator('#show-coefficients').click()
+    expect(page.locator('#coefficients-dialog')).to_be_visible()
+    expect(page.locator('#coefficient-rows tr')).to_have_count(2)
+    page.keyboard.press('Escape')
+    page.locator('.header-import').click()
+    page.locator('input[type="file"]').set_input_files({'name':'invalid.csv','mimeType':'text/csv','buffer':b'year,region_id\n2025,astana\n'})
+    page.locator('input[name="source"]').fill('UI validation fixture, synthetic')
+    page.locator('input[name="boundaries"]').check()
+    page.locator('#import-submit').click()
+    expect(page.locator('#import-error')).to_contain_text('Бағандар жетіспейді',timeout=30000)
+    page.locator('input[type="file"]').set_input_files(str(ROOT/'data/demo.csv'))
+    page.locator('#import-submit').click()
+    expect(page.locator('#import-dialog')).not_to_be_visible(timeout=30000)
+    expect(page.locator('#data-notice')).to_contain_text('Пайдаланушы импорттаған',timeout=30000)
+    expect(page.locator('#source-text')).to_contain_text('UI validation fixture, synthetic')
+    page.locator('.header-import').click()
+    page.locator('#use-demo').click()
+    expect(page.locator('#data-notice')).to_contain_text('Көрсетілім режимі',timeout=30000)
+    page.locator('.header-import').click()
+    page.locator('#use-official').click()
+    expect(page.locator('#data-notice')).to_contain_text('Ресми деректер · stat.gov.kz',timeout=30000)
+    page.select_option('#model-select','spatial')
+    page.select_option('#horizon-select','3')
+    page.select_option('#neighbors-select','4')
+    expect(page.locator('#loading')).to_be_hidden(timeout=30000)
+    page.screenshot(path=str(ROOT/'artifacts/desktop-final.png'),full_page=True)
+    mobile=browser.new_page(viewport={'width':390,'height':844},device_scale_factor=1,is_mobile=True,has_touch=True)
+    mobile.on('pageerror',lambda e:errors.append(str(e)))
+    mobile.goto(url)
+    expect(mobile.locator('#dashboard')).to_be_visible(timeout=30000)
+    assert mobile.evaluate('document.documentElement.scrollWidth <= window.innerWidth'), 'Mobile page overflows'
+    mobile.screenshot(path=str(ROOT/'artifacts/mobile.png'),full_page=True)
+    mobile.locator('[data-open-import]').last.click()
+    expect(mobile.locator('#import-dialog')).to_be_visible()
+    assert not errors,errors
+    browser.close()
+print('Browser checks passed: desktop, mobile, map, filters, models, horizon, downloads, dialogs, CSV validation and import. No JS errors.')
